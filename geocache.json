@@ -1,0 +1,94 @@
+{
+"1775 Dempster St|IL,WI,NC,SC,GA,AL,FL": [
+"Evanston",
+"IL",
+42.0412415,
+-87.6971272
+],
+"8901 W Lincoln Ave|IL,WI,NC,SC,GA,AL,FL": [
+"Peoria",
+"IL",
+40.6813626,
+-89.6159785
+],
+"3400 Union Ave|IL,WI,NC,SC,GA,AL,FL": [
+"Steger",
+"IL",
+41.4695586,
+-87.6334192
+],
+"3815 Highland Ave|IL,WI,NC,SC,GA,AL,FL": [
+"Downers Grove",
+"IL",
+41.8200584,
+-88.0083351
+],
+"MG AHMG CARDIOLOGY ORLANDO|FL,TX,GA,NC,KS,CO,KY,WI,IL,MO": null,
+"DE VICTORIA MEDICAL PARK 151|FL,TX,GA,NC,KS,CO,KY,WI,IL,MO": null,
+"ADVENTHEALTH FISH MEMORIAL|FL,TX,GA,NC,KS,CO,KY,WI,IL,MO": null,
+"ADVENTHEALTH DELAND|FL,TX,GA,NC,KS,CO,KY,WI,IL,MO": null,
+"MUSC Health Kershaw Medical Center|SC": [
+"",
+"SC",
+null,
+null
+],
+"MUSC Health Bamberg-Barnwell Emergency &amp; Imaging|SC": null,
+"Orangeburg Regional Medical Center|SC": null,
+"MUSC Health Columbia Medical Center Downtown|SC": [
+"",
+"SC",
+null,
+null
+],
+"789 Central Avenue Dover|MA,NH": [
+"Needham",
+"MA",
+42.2590675,
+-71.2713369
+],
+"55 Fruit Street Boston|MA,NH": [
+"Boston",
+"MA",
+42.3628605,
+-71.068753
+],
+"20 Patriot Place Foxborough|MA,NH": [
+"Foxborough",
+"MA",
+42.0927053,
+-71.2661845
+],
+"Medical Building 3|SD,ND,MN,IA,NE,WI": [
+"",
+"SD",
+null,
+null
+],
+"Jamestown Clin 5th Ave|SD,ND,MN,IA,NE,WI": null,
+"Sanford Broadway Med Ctr|SD,ND,MN,IA,NE,WI": [
+"",
+"ND",
+null,
+null
+],
+"Sanford Trf Med Ctr|SD,ND,MN,IA,NE,WI": null,
+"New Orleans|LA,MS": [
+"New Orleans",
+"LA",
+29.9574657,
+-90.0629493
+],
+"Hancock|LA,MS": [
+"Hancock",
+"LA",
+32.5959733,
+-91.9554077
+],
+"Slidell|LA,MS": [
+"Slidell",
+"LA",
+30.2751945,
+-89.7811745
+]
+}

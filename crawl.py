@@ -123,6 +123,13 @@ def place(jp):
     return city, st, lat, lon
 
 
+def raw_locality(jp):
+    loc = jp.get('jobLocation')
+    loc = loc[0] if isinstance(loc, list) and loc else loc
+    a = (loc or {}).get('address', {}) if isinstance(loc, dict) else {}
+    return (a.get('addressLocality') or '') if isinstance(a, dict) else ''
+
+
 def kind(t):
     t = ' '.join(t) if isinstance(t, list) else str(t or '')
     t = t.upper()
@@ -137,6 +144,7 @@ def kind(t):
 
 WD_RE = re.compile(r'https://([a-z0-9-]+)\.(wd\d+)\.myworkdayjobs\.com/(?:[a-z]{2}-[A-Z]{2}/)?([A-Za-z0-9_-]+)')
 WD_HINT = {}
+WD_LOC = {}
 WD_TERMS = ['sonographer', 'ultrasound', 'echocardiograph', 'vascular technologist']
 
 
@@ -160,10 +168,105 @@ def workday_links(base):
                 seen.add(p['externalPath'])
                 link = f'{root}/{site}{p["externalPath"]}'
                 WD_HINT[link] = [b for b in p.get('bulletFields', []) if b][1:]
+                WD_LOC[link] = p.get('locationsText') or ''
                 out.append(link)
             if len(ps) < 20:
                 break
     return out
+
+
+
+GEO_FILE = os.path.join(HERE, 'geocache.json')
+try:
+    GEO = json.load(open(GEO_FILE))
+except Exception:
+    GEO = {}
+NOMINATIM = 'https://nominatim.openstreetmap.org/search'
+
+
+FULL = {v: k.title() for k, v in STATES.items()}
+
+
+def _nominatim(q):
+    time.sleep(1.1)  # Nominatim's usage policy: at most 1 request per second
+    qs = urllib.parse.urlencode({'q': q, 'format': 'jsonv2', 'addressdetails': 1, 'limit': 5, 'countrycodes': 'us'})
+    r = subprocess.run(['curl', '-s', '-m', '30', '-A', UA, f'{NOMINATIM}?{qs}'], capture_output=True, text=True)
+    try:
+        return json.loads(r.stdout)
+    except Exception:
+        return []
+
+
+def geocode(query, allowed_states):
+    """(city, state, lat, lon) via OpenStreetMap Nominatim, cached. Tries the employer's states in order.
+    Street addresses and plain city names get a city and coordinates; hospital / clinic names only a state (their match is less reliable)."""
+    key = f'{query}|{",".join(allowed_states)}'
+    if key in GEO:
+        v = GEO[key]
+        return tuple(v) if v else None
+    street = bool(re.match(r'^\d', query.strip()))
+    plain_city = bool(re.fullmatch(r"[A-Z][A-Za-z.'-]+(?: [A-Z][A-Za-z.'-]+){0,2}", query.strip())) and not re.search(r'center|clinic|hospital|medical|health|building|campus|pavilion|care|institute', query, re.I)
+    best = None
+    for st in (list(allowed_states)[:4] or [None]):
+        for hit in _nominatim(f'{query}, {FULL[st]}' if st else query):
+            a = hit.get('address', {})
+            hst = STATES.get((a.get('state') or '').lower(), '')
+            if not hst or (st and hst != st):
+                continue
+            if hit.get('addresstype') in ('county', 'state', 'region', 'country', 'state_district', 'administrative'):
+                continue
+            city = a.get('city') or a.get('town') or a.get('village') or a.get('hamlet') or a.get('suburb') or ''
+            if not city:
+                continue
+            if street or plain_city:
+                best = (city, hst, float(hit['lat']), float(hit['lon']))
+            else:
+                best = ('', hst, None, None)
+            break
+        if best:
+            break
+    GEO[key] = list(best) if best else None
+    return best
+
+
+EMP_STATES = {e['name']: list(e.get('states', [])) for e in json.load(open(os.path.join(HERE, 'employers.json')))}
+
+
+def fill_places(jobs):
+    """Give every job a state and coordinates: parse what the employer wrote, then look the rest up."""
+    by_emp = collections.defaultdict(collections.Counter)
+    for j in jobs:
+        if j['state']:
+            by_emp[j['employer']][j['state']] += 1
+    for j in jobs:
+        emp_states = EMP_STATES.get(j['employer'], []) + [s for s, n in by_emp[j['employer']].most_common(6) if s not in EMP_STATES.get(j['employer'], [])]
+        if not j['state']:
+            raw = j.get('raw') or j['city']
+            m = re.match(r"^([A-Za-z .'-]+)-([A-Z]{2})$", raw.strip())  # Workday style "Boston-MA"
+            if m:
+                j['city'], j['state'] = m.group(1).strip(), m.group(2)
+            else:
+                clean = re.sub(r'\([^)]*\)', '', raw).strip(' -,')
+                tries = [clean]
+                g = None
+                for q in tries:
+                    g = geocode(q, emp_states)
+                    if g:
+                        break
+                if g:
+                    j['city'] = g[0] if g[0] else ('' if (not j['city'] or re.search(r'\d', j['city']) or j['city'] == raw) else j['city'])
+                    j['state'] = g[1]
+                    if g[2] is not None:
+                        j['lat'], j['lon'] = g[2], g[3]
+        if j['state'] and j['lat'] is None and j['city']:
+            g = geocode(f"{j['city']}, {j['state']}", {j['state']})
+            if g:
+                j['lat'], j['lon'] = g[2], g[3]
+    for j in jobs:  # never show a street, clinic name or building as a city
+        if not j['state'] or re.search(r'\d|center|clinic|hospital|medical|health|building|campus|pavilion|institute', j['city'] or '', re.I):
+            j['city'] = j['city'] if j['state'] and j['lat'] is not None and not re.search(r'\d', j['city'] or '') and len(j['city'] or '') < 26 else ''
+    json.dump(GEO, open(GEO_FILE, 'w'), indent=0)
+    return jobs
 
 
 def crawl_employer(e):
@@ -200,6 +303,7 @@ def crawl_employer(e):
             'id': hashlib.sha1(u.encode()).hexdigest()[:12], 'employer': name, 'title': title,
             'posted': (jp.get('datePosted') or '')[:10], 'expires': (jp.get('validThrough') or '')[:10] or None,
             'type': kind(jp.get('employmentType')), 'city': city, 'state': st, 'lat': lat, 'lon': lon, 'url': u,
+            'raw': WD_LOC.get(u) or raw_locality(jp),
         })
     return jobs
 
@@ -234,7 +338,7 @@ def main():
             jobs[j['id']] = j
         stats[e['name']] = len(got)
         print(f"{e['name']:28} {len(got):>4}", flush=True)
-    out = [j for j in jobs.values() if not (j['expires'] and j['expires'] < now)]
+    out = fill_places([j for j in jobs.values() if not (j['expires'] and j['expires'] < now)])
     out.sort(key=lambda j: (j['posted'] or '', j['firstSeen']), reverse=True)
     payload = {'generated': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()), 'count': len(out), 'employers': stats, 'jobs': out}
     json.dump(payload, open(os.path.join(HERE, 'jobs.json'), 'w'), indent=None, separators=(',', ':'))

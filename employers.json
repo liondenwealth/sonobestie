@@ -3,13 +3,25 @@
   "name": "Mayo Clinic",
   "base": "https://jobs.mayoclinic.org",
   "enabled": true,
-  "note": ""
+  "note": "",
+  "states": [
+   "MN",
+   "WI",
+   "AZ",
+   "FL",
+   "IA"
+  ]
  },
  {
   "name": "Cleveland Clinic",
   "base": "https://jobs.clevelandclinic.org",
   "enabled": true,
-  "note": ""
+  "note": "",
+  "states": [
+   "OH",
+   "FL",
+   "NV"
+  ]
  },
  {
   "name": "Kaiser Permanente",
@@ -33,31 +45,55 @@
   "name": "Johns Hopkins",
   "base": "https://jobs.hopkinsmedicine.org",
   "enabled": true,
-  "note": ""
+  "note": "",
+  "states": [
+   "MD",
+   "DC",
+   "VA",
+   "FL"
+  ]
  },
  {
   "name": "Cedars-Sinai",
   "base": "https://careers.cshs.org",
   "enabled": true,
-  "note": ""
+  "note": "",
+  "states": [
+   "CA"
+  ]
  },
  {
   "name": "Stanford Health Care",
   "base": "https://careers.stanfordhealthcare.org",
   "enabled": true,
-  "note": ""
+  "note": "",
+  "states": [
+   "CA"
+  ]
  },
  {
   "name": "Baylor Scott & White",
   "base": "https://jobs.bswhealth.com",
   "enabled": true,
-  "note": ""
+  "note": "",
+  "states": [
+   "TX"
+  ]
  },
  {
   "name": "Advocate Health",
   "base": "https://careers.advocatehealth.org",
   "enabled": true,
-  "note": ""
+  "note": "",
+  "states": [
+   "IL",
+   "WI",
+   "NC",
+   "SC",
+   "GA",
+   "AL",
+   "FL"
+  ]
  },
  {
   "name": "Northwestern Medicine",
@@ -69,7 +105,10 @@
   "name": "Sutter Health",
   "base": "https://jobs.sutterhealth.org",
   "enabled": true,
-  "note": ""
+  "note": "",
+  "states": [
+   "CA"
+  ]
  },
  {
   "name": "Providence",
@@ -81,13 +120,24 @@
   "name": "Intermountain",
   "base": "https://imh.wd108.myworkdayjobs.com/IntermountainCareers",
   "enabled": true,
-  "note": ""
+  "note": "",
+  "states": [
+   "UT",
+   "CO",
+   "ID",
+   "MT",
+   "NV",
+   "WY"
+  ]
  },
  {
   "name": "Duke Health",
   "base": "https://careers.dukehealth.org",
   "enabled": true,
-  "note": ""
+  "note": "",
+  "states": [
+   "NC"
+  ]
  },
  {
   "name": "Ascension",
@@ -117,13 +167,25 @@
   "name": "Mass General Brigham",
   "base": "https://massgeneralbrigham.wd1.myworkdayjobs.com/MGBExternal",
   "enabled": true,
-  "note": ""
+  "note": "",
+  "states": [
+   "MA",
+   "NH"
+  ]
  },
  {
   "name": "Banner Health",
   "base": "https://bannerhealth.wd108.myworkdayjobs.com/Careers",
   "enabled": true,
-  "note": ""
+  "note": "",
+  "states": [
+   "AZ",
+   "CO",
+   "NE",
+   "WY",
+   "CA",
+   "NV"
+  ]
  },
  {
   "name": "Mount Sinai",
@@ -135,7 +197,10 @@
   "name": "Montefiore",
   "base": "https://careers.montefiore.org",
   "enabled": true,
-  "note": ""
+  "note": "",
+  "states": [
+   "NY"
+  ]
  },
  {
   "name": "Yale New Haven Health",
@@ -153,25 +218,47 @@
   "name": "Corewell Health",
   "base": "https://careers.corewellhealth.org",
   "enabled": true,
-  "note": ""
+  "note": "",
+  "states": [
+   "MI"
+  ]
  },
  {
   "name": "Henry Ford Health",
   "base": "https://careers.henryford.com",
   "enabled": true,
-  "note": ""
+  "note": "",
+  "states": [
+   "MI"
+  ]
  },
  {
   "name": "Ochsner Health",
   "base": "https://careers.ochsner.org",
   "enabled": true,
-  "note": ""
+  "note": "",
+  "states": [
+   "LA",
+   "MS"
+  ]
  },
  {
   "name": "AdventHealth",
   "base": "https://jobs.adventhealth.com",
   "enabled": true,
-  "note": ""
+  "note": "",
+  "states": [
+   "FL",
+   "TX",
+   "GA",
+   "NC",
+   "KS",
+   "CO",
+   "KY",
+   "WI",
+   "IL",
+   "MO"
+  ]
  },
  {
   "name": "Orlando Health",
@@ -189,7 +276,10 @@
   "name": "Memorial Hermann",
   "base": "https://jobs.memorialhermann.org",
   "enabled": true,
-  "note": ""
+  "note": "",
+  "states": [
+   "TX"
+  ]
  },
  {
   "name": "UT Southwestern",
@@ -219,7 +309,10 @@
   "name": "Sharp HealthCare",
   "base": "https://jobs.sharp.com",
   "enabled": true,
-  "note": ""
+  "note": "",
+  "states": [
+   "CA"
+  ]
  },
  {
   "name": "MultiCare",
@@ -249,7 +342,15 @@
   "name": "Sanford Health",
   "base": "https://jobs.sanfordhealth.org",
   "enabled": true,
-  "note": ""
+  "note": "",
+  "states": [
+   "SD",
+   "ND",
+   "MN",
+   "IA",
+   "NE",
+   "WI"
+  ]
  },
  {
   "name": "UNC Health",
@@ -279,13 +380,19 @@
   "name": "Wellstar",
   "base": "https://careers.wellstar.org",
   "enabled": true,
-  "note": ""
+  "note": "",
+  "states": [
+   "GA"
+  ]
  },
  {
   "name": "Vanderbilt UMC",
   "base": "https://careers.vumc.org",
   "enabled": true,
-  "note": ""
+  "note": "",
+  "states": [
+   "TN"
+  ]
  },
  {
   "name": "Inova",
@@ -339,7 +446,10 @@
   "name": "MUSC Health",
   "base": "https://muschealth.org/careers",
   "enabled": true,
-  "note": ""
+  "note": "",
+  "states": [
+   "SC"
+  ]
  },
  {
   "name": "RadNet",
