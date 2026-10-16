@@ -103,15 +103,18 @@ def place(jp):
         m = re.search(r',\s*([A-Z]{2})\s*(\d{5})?$', city)
         st, city = m.group(1), city[:m.start()].strip()
     if not st:
-        m = re.search(r"([A-Za-z][A-Za-z .'-]+?),\s*([A-Z]{2})\b", city)
+        m = re.search(r",\s*([A-Z]{2})\b", city)
         if m:
-            city, st = m.group(1).strip(), m.group(2)
+            city, st = city[:m.start()], m.group(1)
         else:
             for full, ab in STATES.items():
-                m = re.search(r"([A-Za-z][A-Za-z .'-]+?),\s*" + full + r"\b", city, re.I)
+                m = re.search(r",\s*" + full + r"\b", city, re.I)
                 if m:
-                    city, st = m.group(1).strip(), ab
+                    city, st = city[:m.start()], ab
                     break
+    if ' - ' in city or ',' in city:
+        city = re.split(r' - |, ', city)[-1]
+    city = city.strip()
     geo = loc.get('geo') if isinstance(loc.get('geo'), dict) else {}
     try:
         lat, lon = float(geo.get('latitude')), float(geo.get('longitude'))
