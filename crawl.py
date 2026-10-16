@@ -229,6 +229,44 @@ def geocode(query, allowed_states):
     return best
 
 
+
+STOP = set('adventhealth advocate aurora hospital medical center ctr clinic health healthcare campus pavilion building cancer institute city region main primary care physicians group mg ah ahmg de the and of st saint hospitals'.split())
+
+
+def state_in_text(raw):
+    """A state named as its own part of the location text: 'New Orleans - Region - Louisiana', 'WI, Minocqua', 'Boston-MA', 'Florida Weston Hospital'.
+    Never a street name ('2900 W Oklahoma Ave')."""
+    parts = [p.strip() for p in re.split(r' - |, |-', raw) if p.strip()]
+    for p in parts:
+        if p.lower() in STATES:
+            return STATES[p.lower()]
+        if p in ABBR:
+            return p
+    if parts and not re.match(r'^\d', raw.strip()):
+        first = parts[0].lower()
+        for full, ab in STATES.items():
+            if first.startswith(full + ' '):
+                return ab
+    return ''
+
+
+def city_from_name(raw, states):
+    """'ADVENTHEALTH CASTLE ROCK' -> the one place name left once brand and facility words are removed, accepted only if the map agrees."""
+    words = [w for w in re.sub(r'[^A-Za-z ]', ' ', raw).split() if w.lower() not in STOP and len(w) > 1]
+    if not words or len(words) > 3:
+        return None
+    cand = ' '.join(words).title()
+    for st in list(states)[:6]:
+        for hit in _nominatim(f'{cand}, {FULL[st]}'):
+            a = hit.get('address', {})
+            if STATES.get((a.get('state') or '').lower(), '') != st:
+                continue
+            city = a.get('city') or a.get('town') or a.get('village') or a.get('hamlet') or ''
+            if city and city.lower() == cand.lower():
+                return (city, st, float(hit['lat']), float(hit['lon']))
+    return None
+
+
 EMP_STATES = {e['name']: list(e.get('states', [])) for e in json.load(open(os.path.join(HERE, 'employers.json')))}
 
 
@@ -243,8 +281,16 @@ def fill_places(jobs):
         if not j['state']:
             raw = j.get('raw') or j['city']
             m = re.match(r"^([A-Za-z .'-]+)-([A-Z]{2})$", raw.strip())  # Workday style "Boston-MA"
+            tx = state_in_text(raw) if not m else ''
             if m:
                 j['city'], j['state'] = m.group(1).strip(), m.group(2)
+            elif tx:
+                j['state'] = tx
+                lead = re.split(r' - |, ', raw)[0 if not re.match(r'^[A-Z]{2},', raw.strip()) else -1].strip()
+                if lead and not re.search(r'\d|locations', lead, re.I) and len(lead) < 26 and not re.search(r'center|clinic|hospital|medical|campus', lead, re.I):
+                    g2 = geocode(f'{lead}', [tx])
+                    if g2 and g2[2] is not None:
+                        j['city'], j['lat'], j['lon'] = g2[0], g2[2], g2[3]
             else:
                 clean = re.sub(r'\([^)]*\)', '', raw).strip(' -,')
                 tries = [clean]
@@ -253,6 +299,8 @@ def fill_places(jobs):
                     g = geocode(q, emp_states)
                     if g:
                         break
+                if not g and emp_states and not re.match(r'^\d', clean):
+                    g = city_from_name(clean, emp_states)
                 if g:
                     j['city'] = g[0] if g[0] else ('' if (not j['city'] or re.search(r'\d', j['city']) or j['city'] == raw) else j['city'])
                     j['state'] = g[1]
