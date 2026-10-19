@@ -142,6 +142,115 @@ def kind(t):
     return 'other'
 
 
+TAG = re.compile(r'<script.*?</script>|<style.*?</style>', re.S)
+MONEY = r'(\d{1,3}(?:,\d{3})+|\d+(?:\.\d{1,2})?)'
+RANGE = re.compile(r'\$\s?' + MONEY + r'\s*(k)?\s*(?:-|–|—|to)\s*\$?\s?' + MONEY + r'\s*(k)?(?:\s*(?:/|per|an?)?\s*(hr|hour|year|yr|annually))?', re.I)
+NOT_PAY = re.compile(r'bonus|sign[- ]?on|relocation|tuition|stipend|incentive|reimburs|loan|retention|differential', re.I)
+
+
+def page_text(html, jp):
+    """Plain text of the posting page (scripts removed), plus the schema.org description if the page itself is a shell."""
+    t = re.sub(r'<[^>]+>', ' ', TAG.sub(' ', html))
+    d = (jp or {}).get('description') or ''
+    if d:
+        t += ' ' + re.sub(r'<[^>]+>', ' ', __import__('html').unescape(d))
+    return re.sub(r'\s+', ' ', t)
+
+
+def pay_from(jp, text):
+    """(min, max, 'hr'|'yr') when the employer posts a pay range: schema.org baseSalary first, else a '$a - $b' range in the page text. Hourly stays hourly."""
+    bs = (jp or {}).get('baseSalary')
+    if isinstance(bs, dict):
+        v = bs.get('value') if isinstance(bs.get('value'), dict) else bs
+        try:
+            lo, hi = float(v.get('minValue')), float(v.get('maxValue') or v.get('minValue'))
+        except Exception:
+            lo = hi = 0
+        unit = str(v.get('unitText') or '').upper()
+        if lo > 0:
+            u = 'hr' if unit.startswith('HOUR') or hi <= 250 else 'yr'
+            if (u == 'hr' and 18 <= hi <= 150) or (u == 'yr' and 40000 <= hi <= 320000):
+                return round(lo, 2), round(hi, 2), u
+    found = []
+    for m in RANGE.finditer(text):
+        if NOT_PAY.search(text[max(0, m.start() - 80):m.start()]):
+            continue
+        lo, hi = float(m.group(1).replace(',', '')), float(m.group(3).replace(',', ''))
+        if m.group(2):
+            lo *= 1000
+        if m.group(4):
+            hi *= 1000
+        unit = (m.group(5) or '').lower()
+        u = 'hr' if unit.startswith('h') else 'yr' if unit.startswith(('y', 'a')) else ('hr' if hi <= 250 else 'yr')
+        if lo > hi or not ((u == 'hr' and 18 <= lo and hi <= 150) or (u == 'yr' and 40000 <= lo and hi <= 320000)):
+            continue
+        found.append((lo, hi, u))
+    if not found:
+        return None
+    first = found[0]
+    same = [f for f in found if f[2] == first[2]]
+    lo, hi = min(f[0] for f in same), max(f[1] for f in same)
+    if hi / lo > 2.5:
+        lo, hi = first[0], first[1]
+    return round(lo, 2), round(hi, 2), first[2]
+
+
+SHIFT_WORD = {'night': 'night', 'nights': 'night', 'noc': 'night', 'overnight': 'night', 'evening': 'evening', 'evenings': 'evening', 'day': 'day', 'days': 'day', 'rotating': 'rotating', 'rotate': 'rotating', 'variable': 'rotating', 'weekend': 'weekend', 'weekends': 'weekend'}
+
+
+def shift_from(title, html, text):
+    """'night' | 'evening' | 'day' | 'rotating' | 'weekend' when the posting says so: in the title, a 'Shift: Nights' line, or the employer's own shift tag."""
+    t = re.search(r'\b(nights?|noc|overnight|evenings?|weekends?)\b|\b(days)\b|\bday shift\b', title, re.I)
+    if t:
+        return SHIFT_WORD.get((t.group(1) or t.group(2) or 'day').lower(), 'day')
+    m = re.search(r'custom_fields\.Shift-(Night|Day|Evening|Rotating)', html, re.I)
+    if m:
+        return SHIFT_WORD[m.group(1).lower()]
+    m = re.search(r'\bshift\s*[:\-]?\s*(nights?|evenings?|days?|rotating|rotate|weekends?)\b', text, re.I)
+    if m:
+        return SHIFT_WORD[m.group(1).lower()]
+    m = re.search(r'\b(\d+[- ]hour\s+)?(night|evening|day)\s+shift\b', text[:3000], re.I)
+    if m:
+        return SHIFT_WORD[m.group(2).lower()]
+    return None
+
+
+STOPW = r'(?:Status|Category|Apply|Schedule|Work|Mass|Job|Employees|Shift|Department|About|Requisition|Bargaining|Skip|Full|Part|Per|Hours|Pay|Posted|Employment|Remote|Travel)\b'
+OTHER_SITE = re.compile(r'clinic|imaging|outpatient|medical offices?|\boffices?\b|physicians|urgent care|medical group|ambulatory|women.?s (health|center)|(cancer|breast|surgery|diagnostic|heart|vascular|care) center|medical plaza|medical (pavilion|building)|\bmob\b|health center|\bmg\b|radiology associates|lab\b', re.I)
+HOSPITAL = re.compile(r'hospital|medical center|\bmc\b|health system|regional medical|heart institute|children.?s|medical campus|\bumc\b', re.I)
+
+
+def facility_from(html, text, raw):
+    """The site name when the posting states it (a hospital, imaging center, clinic ...), short, or ''."""
+    m = re.search(r'custom_fields\.Facility-([A-Za-z0-9-]+)', html)
+    if m:
+        return m.group(1).replace('-', ' ')[:60]
+    m = re.search(r'Department:\s*\d+\s*([^-|]{3,60}?)\s+-\s', text)
+    if m:
+        return m.group(1).strip()
+    m = re.search(r'\b(?:Facility|Site|Work Location|Location)\s*:\s*(.{3,80}?)(?=\s+' + STOPW + r'|$)', text)
+    if m:
+        v = re.split(r'Facility\s*:\s*', m.group(1))[-1].strip(' .,-')
+        if not re.fullmatch(r"[A-Z][A-Za-z.' -]+, (?:[A-Z]{2}|[A-Z][a-z]+)", v):  # a bare 'City, ST' says nothing about the site
+            return re.sub(r'\s+\d{2,}.*$', '', v)[:60]
+    m = re.search(r'\bHospital\s*-\s*[^-]{2,60}?\s*-\s*[A-Za-z ]+? Department', text)
+    if m:
+        return 'Hospital'
+    return raw if re.search(r'hospital|clinic|imaging|center|medical|office', raw or '', re.I) else ''
+
+
+def site_kind(fac, title):
+    """'hospital' or 'other' (clinic, imaging center, medical office ...), None when the posting does not say."""
+    for t in (fac, title):
+        if not t:
+            continue
+        if OTHER_SITE.search(t):
+            return 'other'
+        if HOSPITAL.search(t):
+            return 'hospital'
+    return None
+
+
 WD_RE = re.compile(r'https://([a-z0-9-]+)\.(wd\d+)\.myworkdayjobs\.com/(?:[a-z]{2}-[A-Z]{2}/)?([A-Za-z0-9_-]+)')
 WD_HINT = {}
 WD_LOC = {}
@@ -333,7 +442,8 @@ def crawl_employer(e):
     for u in links:
         if not allowed(u):
             continue
-        jp = jobposting(get(u))
+        html = get(u)
+        jp = jobposting(html)
         if not jp:
             continue
         title = (jp.get('title') or '').strip()
@@ -347,8 +457,12 @@ def crawl_employer(e):
                     st = ab
                 elif not city or city == jp.get('title'):
                     city = b
+        text = page_text(html, jp)
+        pay = pay_from(jp, text)
         jobs.append({
             'id': hashlib.sha1(u.encode()).hexdigest()[:12], 'employer': name, 'title': title,
+            'payMin': pay[0] if pay else None, 'payMax': pay[1] if pay else None, 'payUnit': pay[2] if pay else None,
+            'shift': shift_from(title, html, text), 'facility': (fac := facility_from(html, text, WD_LOC.get(u, ''))), 'site': site_kind(fac, title),
             'posted': (jp.get('datePosted') or '')[:10], 'expires': (jp.get('validThrough') or '')[:10] or None,
             'type': kind(jp.get('employmentType')), 'city': city, 'state': st, 'lat': lat, 'lon': lon, 'url': u,
             'raw': WD_LOC.get(u) or raw_locality(jp),
